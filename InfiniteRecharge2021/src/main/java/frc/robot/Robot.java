@@ -4,10 +4,13 @@
 
 package frc.robot;
 
+import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.DigitalInput;
+import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.VictorSP;
+import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
@@ -39,12 +42,15 @@ public class Robot extends TimedRobot {
   ArmPos armPos;
   ArmPos desiredArmPos;
 
+
   /**
    * This function is run when the robot is first started up and should be used
    * for any initialization code.
    */
   @Override
   public void robotInit() {
+    armPos = ArmPos.HIGH;
+    //desiredArmPos = ArmPos.IDLE;
     m_chooser.setDefaultOption("Default Auto", kDefaultAuto);
     m_chooser.addOption("My Auto", kCustomAuto);
     SmartDashboard.putData("Auto choices", m_chooser);
@@ -53,10 +59,15 @@ public class Robot extends TimedRobot {
   VictorSP leftDrive = new VictorSP(0); // two controllers off pwm splitter
   VictorSP rightDrive = new VictorSP(1);
 
-  VictorSP arm = new VictorSP(5);
+  VictorSP arm = new VictorSP(4);
+  VictorSP intake = new VictorSP(3);
 
   Joystick stick = new Joystick(0);
 
+  Compressor comp = new Compressor(0);
+
+  DoubleSolenoid intakeSolenoid = new DoubleSolenoid(2, 3);
+ // DoubleSolenoid controlPanelSolenoid = new DoubleSolenoid(0, 1);
   /**
    * This function is called every robot packet, no matter the mode. Use this for
    * items like diagnostics that you want ran during disabled, autonomous,
@@ -106,28 +117,49 @@ public class Robot extends TimedRobot {
   /** This function is called once when teleop is enabled. */
   @Override
   public void teleopInit() {
+    comp.start();
+    intakeSolenoid.set(Value.kForward);
   }
 
   /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {
+    System.out.println("Lower switch " + !lowSwitch.get());
+    System.out.println("Middle switch " + !portSwitch.get());
+    System.out.println("Upper switch " + !highSwitch.get());
+
     steering = stick.getX();
     power = stick.getY();
     throttle = (((stick.getThrottle() * -1) + 1) / 2);
-
+    //armStateMachine();
     deadZoneCorrection();
 
-    leftDrive.set((steering + power) * throttle);
-    rightDrive.set((steering - power) * throttle);
+    leftDrive.set(-(steering + power) * throttle);
+    rightDrive.set(-(steering - power) * throttle);
 
     if (stick.getRawButton(11)) {
-      desiredArmPos = ArmPos.LOW;
+      System.out.println("DOWN!!!");
+      armPos = ArmPos.LOW;
+      armLow();
     } else if(stick.getRawButton(9)) {
-      desiredArmPos = ArmPos.MEDIUM;
+      armPort();
     } else if(stick.getRawButton(7)) {
-      desiredArmPos = ArmPos.HIGH;
+      armPos = ArmPos.HIGH;
+      armHigh();
     } else {
-      desiredArmPos = ArmPos.IDLE;
+      armIdle();
+    }
+    System.out.println(armPos);
+
+    if(stick.getTrigger()) {
+      intake.set(-1);
+      intakeSolenoid.set(Value.kReverse);
+    } else if(stick.getRawButton(2)) {
+      intake.set(1);
+    } else {
+      intake.set(0);
+      intakeSolenoid.set(Value.kForward);
+
     }
   }
 
@@ -160,25 +192,27 @@ public class Robot extends TimedRobot {
   }
 
   void armLow() {
-    if(!(lowSwitch.get())) {
-      arm.set(-0.5);
+    if((lowSwitch.get())) {
+      arm.set(1);
       armPos = ArmPos.LOW;
-    }
+    } else {
+      armIdle();
+   }
   }
   void armPort() {
-    if(!(portSwitch.get())) {
-      armPos = ArmPos.MEDIUM;
-      if(armPos == ArmPos.LOW) {
-        arm.set(0.5);
-      } else {
-        arm.set(-0.5);
-      }
+    if((portSwitch.get() && highSwitch.get())) {
+      arm.set(-1);
+    } else {
+      armIdle();
     }
+
   }
 
   void armHigh() {
-    if(!(highSwitch.get())) {
-      arm.set(-0.5);
+    if((highSwitch.get())) {
+      arm.set(-1);
+    } else {
+      armIdle();
     }
   }
 
@@ -196,5 +230,9 @@ public class Robot extends TimedRobot {
       default:
       break;
     }
+  }
+
+  void armIdle() {
+    arm.set(0);
   }
 }
