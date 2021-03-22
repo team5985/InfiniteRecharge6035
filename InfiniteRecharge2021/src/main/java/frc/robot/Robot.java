@@ -59,14 +59,24 @@ public class Robot extends TimedRobot {
   VictorSP leftDrive = new VictorSP(0); // two controllers off pwm splitter
   VictorSP rightDrive = new VictorSP(1);
 
-  VictorSP arm = new VictorSP(4);
-  VictorSP intake = new VictorSP(3);
+  VictorSP arm = new VictorSP(7);
+  VictorSP intake = new VictorSP(5);
+  VictorSP spinny = new VictorSP(3);
 
   Joystick stick = new Joystick(0);
+  Joystick pad = new Joystick(1);
 
   Compressor comp = new Compressor(0);
 
   DoubleSolenoid intakeSolenoid = new DoubleSolenoid(2, 3);
+  DoubleSolenoid spinnySolenoid = new DoubleSolenoid(0, 1);
+
+  public static final int ARM_POS_NONE = 0;
+  public static final int ARM_POS_HIGH = 1;
+  public static final int ARM_POS_PORT = 2;
+  public static final int ARM_POS_LOW = 3;
+  int armCommand = ARM_POS_NONE;
+
  // DoubleSolenoid controlPanelSolenoid = new DoubleSolenoid(0, 1);
   /**
    * This function is called every robot packet, no matter the mode. Use this for
@@ -124,11 +134,11 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {
-    System.out.println("Lower switch " + !lowSwitch.get());
-    System.out.println("Middle switch " + !portSwitch.get());
-    System.out.println("Upper switch " + !highSwitch.get());
+    //System.out.println("Lower switch " + !lowSwitch.get());
+    //System.out.println("Middle switch " + !portSwitch.get());
+    //System.out.println("Upper switch " + !highSwitch.get());
 
-    steering = stick.getX();
+    steering = -stick.getX();
     power = stick.getY();
     throttle = (((stick.getThrottle() * -1) + 1) / 2);
     //armStateMachine();
@@ -137,29 +147,108 @@ public class Robot extends TimedRobot {
     leftDrive.set(-(steering + power) * throttle);
     rightDrive.set(-(steering - power) * throttle);
 
-    if (stick.getRawButton(11)) {
-      System.out.println("DOWN!!!");
+    boolean padMove = false;
+    if (Math.abs(pad.getRawAxis(0)) > 0.2)
+    {
+      padMove = true;
+    }
+    if (Math.abs(pad.getRawAxis(1)) > 0.2)
+    {
+      padMove = true;
+    }
+    // System.out.println("Button - " + padMove);
+    // System.out.println("Axis 0 - " + pad.getRawAxis(0));
+    // System.out.println("Axis 1 - " + pad.getRawAxis(1));
+    if (( stick.getRawButton(11) || pad.getRawButton(2) )) {
+      //System.out.println("DOWN!!!");
       armPos = ArmPos.LOW;
       armLow();
-    } else if(stick.getRawButton(9)) {
+      if (padMove)
+      {
+        armCommand = ARM_POS_LOW;
+      }
+      else
+      {
+        armCommand = ARM_POS_NONE;
+      }
+    } else if((stick.getRawButton(9) || pad.getRawButton(3) )) {
       armPort();
-    } else if(stick.getRawButton(7)) {
+      if (padMove)
+      {
+        armCommand = ARM_POS_PORT;
+      }
+      else
+      {
+        armCommand = ARM_POS_NONE;
+      }
+    } else if((stick.getRawButton(7) || pad.getRawButton(4) )) {
       armPos = ArmPos.HIGH;
       armHigh();
+      if (padMove)
+      {
+        armCommand = ARM_POS_HIGH;
+      }
+      else
+      {
+        armCommand = ARM_POS_NONE;
+      }
+    } else if (armCommand != ARM_POS_NONE) {
+      if (armCommand == ARM_POS_LOW)
+      {
+        armLow();
+        if(! lowSwitch.get())
+        {
+          armCommand = ARM_POS_NONE;
+        }
+      } else if (armCommand == ARM_POS_PORT)
+      {
+        armPort();
+        if(!(portSwitch.get() && highSwitch.get()))
+        {
+          armCommand = ARM_POS_NONE;
+        }
+      } else if (armCommand == ARM_POS_HIGH)
+      {
+        armHigh();
+        if(! highSwitch.get()) {
+          armCommand = ARM_POS_NONE;
+        }
+      } else {
+        armCommand = ARM_POS_NONE;
+        armIdle();
+      }
     } else {
       armIdle();
     }
     System.out.println(armPos);
 
-    if(stick.getTrigger()) {
+    if (stick.getRawButton(12)) {
+      spinnySolenoid.set(Value.kForward);
+    } else {
+      spinnySolenoid.set(Value.kReverse);
+    }
+
+
+
+    if((stick.getTrigger() || pad.getRawButton(7))) {
+      // Intake balls
+      //  Solenoid retracted
+      //  motor intaking
       intake.set(-1);
       intakeSolenoid.set(Value.kReverse);
-    } else if(stick.getRawButton(2)) {
+    } else if(( stick.getRawButton(2) || pad.getRawButton(8) )) {
+      // Eject balls
+      //  Solenoid extended
+      //  motor outputting
+      intake.set(1);
+    } else if(pad.getRawButton(5)) {
+      // Eject jammed ball only
+      //  Solenoid retracted
+      //  motor outputting
       intake.set(1);
     } else {
       intake.set(0);
       intakeSolenoid.set(Value.kForward);
-
     }
   }
 
