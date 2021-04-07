@@ -134,6 +134,21 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {
+    // for (int ii = 0 ; ii < 20 ; ii++)
+    // {
+    //   if (pad.getRawButton(ii))
+    //   {
+    //     System.out.print("t,");
+    //   }
+    //   else
+    //   {
+    //     System.out.print("f,");
+    //   }
+    // }
+    // System.out.println();
+
+      // System.out.println("POV = " + pad.getPOV());
+
     //System.out.println("Lower switch " + !lowSwitch.get());
     //System.out.println("Middle switch " + !portSwitch.get());
     //System.out.println("Upper switch " + !highSwitch.get());
@@ -148,19 +163,23 @@ public class Robot extends TimedRobot {
     rightDrive.set(-(steering - power) * throttle);
 
     boolean padMove = false;
-    if (Math.abs(pad.getRawAxis(0)) > 0.2)
-    {
-      padMove = true;
-    }
-    if (Math.abs(pad.getRawAxis(1)) > 0.2)
-    {
-      padMove = true;
-    }
+    // if (Math.abs(pad.getRawAxis(5)) > 0.2)
+    // {
+    //   padMove = true;
+    // }
+    // if (Math.abs(pad.getRawAxis(6)) > 0.2)
+    // {
+    //   padMove = true;
+    // }
+      if (pad.getPOV() >= 0)
+      {
+        padMove = true;
+      }
+
     // System.out.println("Button - " + padMove);
     // System.out.println("Axis 0 - " + pad.getRawAxis(0));
     // System.out.println("Axis 1 - " + pad.getRawAxis(1));
     if (( stick.getRawButton(11) || pad.getRawButton(2) )) {
-      //System.out.println("DOWN!!!");
       armPos = ArmPos.LOW;
       armLow();
       if (padMove)
@@ -196,21 +215,21 @@ public class Robot extends TimedRobot {
       if (armCommand == ARM_POS_LOW)
       {
         armLow();
-        if(! lowSwitch.get())
+        if(lowSwitch.get())
         {
           armCommand = ARM_POS_NONE;
         }
       } else if (armCommand == ARM_POS_PORT)
       {
         armPort();
-        if(!(portSwitch.get() && highSwitch.get()))
+        if((!portSwitch.get() || highSwitch.get()))
         {
           armCommand = ARM_POS_NONE;
         }
       } else if (armCommand == ARM_POS_HIGH)
       {
         armHigh();
-        if(! highSwitch.get()) {
+        if(highSwitch.get()) {
           armCommand = ARM_POS_NONE;
         }
       } else {
@@ -281,7 +300,7 @@ public class Robot extends TimedRobot {
   }
 
   void armLow() {
-    if((lowSwitch.get())) {
+    if((!lowSwitch.get())) {
       arm.set(1);
       armPos = ArmPos.LOW;
     } else {
@@ -289,7 +308,7 @@ public class Robot extends TimedRobot {
    }
   }
   void armPort() {
-    if((portSwitch.get() && highSwitch.get())) {
+    if((portSwitch.get() && !highSwitch.get())) {
       arm.set(-1);
     } else {
       armIdle();
@@ -298,7 +317,7 @@ public class Robot extends TimedRobot {
   }
 
   void armHigh() {
-    if((highSwitch.get())) {
+    if((!highSwitch.get())) {
       arm.set(-1);
     } else {
       armIdle();
