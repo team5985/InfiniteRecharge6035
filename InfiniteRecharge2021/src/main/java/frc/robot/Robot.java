@@ -14,6 +14,9 @@ import edu.wpi.first.wpilibj.VictorSP;
 import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import frc.robot.subsystems.ControlPanel;
+import frc.robot.subsystems.ControlPanel.ControlPanelState;
+import frc.util.ColourSensor;
 
 /**
  * The VM is configured to automatically run this class, and to call the functions corresponding to
@@ -52,6 +55,7 @@ public class Robot extends TimedRobot {
   @Override
   public void robotInit() {
     CameraServer.getInstance().startAutomaticCapture(0);
+    cPanel = new ControlPanel(spinny, spinnySolenoid);
     armPos = ArmPos.HIGH;
     //desiredArmPos = ArmPos.IDLE;
     m_chooser.setDefaultOption("Default Auto", kDefaultAuto);
@@ -74,13 +78,14 @@ public class Robot extends TimedRobot {
   DoubleSolenoid intakeSolenoid = new DoubleSolenoid(2, 3);
   DoubleSolenoid spinnySolenoid = new DoubleSolenoid(0, 1);
 
+  ControlPanel cPanel;
+
   public static final int ARM_POS_NONE = 0;
   public static final int ARM_POS_HIGH = 1;
   public static final int ARM_POS_PORT = 2;
   public static final int ARM_POS_LOW = 3;
   int armCommand = ARM_POS_NONE;
 
- // DoubleSolenoid controlPanelSolenoid = new DoubleSolenoid(0, 1);
   /**
    * This function is called every robot packet, no matter the mode. Use this for
    * items like diagnostics that you want ran during disabled, autonomous,
@@ -116,6 +121,9 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during autonomous. */
   @Override
   public void autonomousPeriodic() {
+    ColourSensor.getInstance().update();
+    cPanel.update();
+
     switch (m_autoSelected) {
     case kCustomAuto:
       // Put custom auto code here
@@ -134,9 +142,13 @@ public class Robot extends TimedRobot {
     intakeSolenoid.set(Value.kForward);
   }
 
+  private boolean lastSpinnyButton = false;
+
   /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {
+    ColourSensor.getInstance().update();
+    cPanel.update();
 
     steering = -stick.getX();
     power = stick.getY();
@@ -214,33 +226,54 @@ public class Robot extends TimedRobot {
     }
     System.out.println(armPos);
 
-    if (stick.getRawButton(12)) {
-      spinnySolenoid.set(Value.kForward);
-    } else {
-      spinnySolenoid.set(Value.kReverse);
+    if (stick.getRawButton(12) && !lastSpinnyButton)
+    {
+      if (cPanel.getExtended())
+      {
+        cPanel.setDesiredState(ControlPanelState.RETRACTED);
+      }
+      else
+      {
+        cPanel.setDesiredState(ControlPanelState.EXTENDED);
+      }
     }
+    lastSpinnyButton = stick.getRawButton(12);
 
-
-
-    if((stick.getTrigger() || pad.getRawButton(7))) {
-      // Intake balls
-      //  Solenoid retracted
-      //  motor intaking
-      intake.set(-1);
-      intakeSolenoid.set(Value.kReverse);
-    } else if(( stick.getRawButton(2) || pad.getRawButton(8) )) {
-      // Eject balls
-      //  Solenoid extended
-      //  motor outputting
-      intake.set(1);
-    } else if(pad.getRawButton(5)) {
-      // Eject jammed ball only
-      //  Solenoid retracted
-      //  motor outputting
-      intake.set(1);
-    } else {
+    if(cPanel.getExtended() == true)
+    {
+      if (stick.getRawButton(1))
+      {
+        cPanel.setDesiredState(ControlPanelState.MANUAL_CLOCKWISE);
+      }
+      else
+      {
+        cPanel.setDesiredState(ControlPanelState.EXTENDED);
+      }
       intake.set(0);
       intakeSolenoid.set(Value.kForward);
+    }
+    else
+    {
+      if((stick.getTrigger() || pad.getRawButton(7))) {
+        // Intake balls
+        //  Solenoid retracted
+        //  motor intaking
+        intake.set(-1);
+        intakeSolenoid.set(Value.kReverse);
+      } else if(( stick.getRawButton(2) || pad.getRawButton(8) )) {
+        // Eject balls
+        //  Solenoid extended
+        //  motor outputting
+        intake.set(1);
+      } else if(pad.getRawButton(5)) {
+        // Eject jammed ball only
+        //  Solenoid retracted
+        //  motor outputting
+        intake.set(1);
+      } else {
+        intake.set(0);
+        intakeSolenoid.set(Value.kForward);
+      }
     }
   }
 
