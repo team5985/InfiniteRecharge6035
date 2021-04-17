@@ -8,6 +8,7 @@ import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
+import edu.wpi.first.wpilibj.I2C;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.VictorSP;
@@ -17,6 +18,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.subsystems.ControlPanel;
 import frc.robot.subsystems.ControlPanel.ControlPanelState;
 import frc.util.ColourSensor;
+import frc.util.UltrasonicI2C;
 
 /**
  * The VM is configured to automatically run this class, and to call the functions corresponding to
@@ -35,6 +37,8 @@ public class Robot extends TimedRobot {
   DigitalInput portSwitch = new DigitalInput(1);
   DigitalInput highSwitch = new DigitalInput(2);
 
+  UltrasonicI2C usi2cl;
+  UltrasonicI2C usi2cr;
 
   double steering;
   double power;
@@ -61,6 +65,12 @@ public class Robot extends TimedRobot {
     m_chooser.setDefaultOption("Default Auto", kDefaultAuto);
     m_chooser.addOption("My Auto", kCustomAuto);
     SmartDashboard.putData("Auto choices", m_chooser);
+    
+    I2C.Port i2cp = I2C.Port.kOnboard;
+    I2C usLinkl = new I2C(i2cp, 0x13);
+    I2C usLinkr = new I2C(i2cp, 0x14);
+    usi2cl = new UltrasonicI2C(usLinkl);
+    usi2cr = new UltrasonicI2C(usLinkr);
   }
 
   VictorSP leftDrive = new VictorSP(0); // two controllers off pwm splitter
@@ -97,6 +107,27 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotPeriodic() {
+    UltrasonicI2C.usResults resultsr = usi2cr.getResults();
+    double resr = resultsr.getResult();
+    SmartDashboard.putNumber("Distance right", resr);
+    UltrasonicI2C.usResults resultsl = usi2cl.getResults();
+    double resl = resultsl.getResult();
+    SmartDashboard.putNumber("Distance left", resl);
+  }
+
+  /**
+   * Our own function that we call at the *start* of each periodic scan.
+   * In here we monitor and update our sensors.
+   * 
+   * For sending data to teh SmartDashboard you should probably put it in
+   * robotPeriodic() with is run at the *end* of each scan.
+   */
+  public void updatePeriodic()
+  {
+    // Scan the sensors and process/count/whatever the information coming in.
+    ColourSensor.getInstance().update();
+    usi2cl.update();
+    usi2cr.update();
   }
 
   /**
@@ -121,7 +152,7 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during autonomous. */
   @Override
   public void autonomousPeriodic() {
-    ColourSensor.getInstance().update();
+    updatePeriodic();
     cPanel.update();
 
     switch (m_autoSelected) {
@@ -147,16 +178,48 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {
-    ColourSensor.getInstance().update();
+    updatePeriodic();
     cPanel.update();
 
-    steering = -stick.getX();
-    power = stick.getY();
-    throttle = (((stick.getThrottle() * -1) + 1) / 2);
-    deadZoneCorrection();
+    if (stick.getPOV() == 45)
+    {
+        usWallFollower(false, true);
+    }
+    else if (stick.getPOV() == 135)
+    {
+        usWallFollower(true, true);
+    }
+    else if (stick.getPOV() == 225)
+    {
+        usWallFollower(true, false);
+    }
+    else if (stick.getPOV() == 315)
+    {
+        usWallFollower(false, false);
+    }
+    else
+    {
+        throttle = (-1 * stick.getThrottle() + 1) / 2;
+        steering = stick.getX() * throttle;
+        power = -1 * stick.getY() * throttle;
 
-    leftDrive.set(-(steering + power) * throttle);
-    rightDrive.set(-(steering - power) * throttle);
+        if (steering > -kJoystickDeadband && steering < kJoystickDeadband) {
+          steering = 0;
+        }
+        if (power > -kJoystickDeadband && power < kJoystickDeadband) {
+          power = 0;
+        }
+
+        steerPriority(power - steering, steering + power);
+    }
+
+    // steering = -stick.getX();
+    // power = stick.getY();
+    // throttle = (((stick.getThrottle() * -1) + 1) / 2);
+    // deadZoneCorrection();
+
+    // leftDrive.set(-(steering + power) * throttle);
+    // rightDrive.set(-(steering - power) * throttle);
 
     boolean padMove = false;
     if (pad.getPOV() >= 0)
@@ -277,6 +340,92 @@ public class Robot extends TimedRobot {
     }
   }
 
+  private double lastError = 0;
+  private double outSpeed = 0;
+
+  private void usWallFollower(boolean reverse, boolean right)
+  {        
+      UltrasonicI2C.usResults resultsr = usi2cr.getResults();
+      UltrasonicI2C.usResults resultsl = usi2cl.getResults();
+
+      double aimPos = 300; // how far away from the wall we want to be in mm
+      double pgain = 0.00025; // how fast we correct ourselves
+      double dgain = 0.005; // change in gain
+      double speed = 1;
+      double leftPower;
+      double rightPower;
+      double accRate = 0.08;
+
+      double power = speed;
+      if (reverse)
+      {
+          power = -speed;
+      }
+
+      outSpeed = outSpeed + Math.min( Math.max((power - outSpeed), -accRate), accRate);
+
+      double dirPGain = pgain;
+      double dirDGain = dgain;
+      if (outSpeed < 0)
+      {
+          dirPGain = -dirPGain;
+          dirDGain = -dirDGain;
+      }
+      double error = 0;
+      if (right)
+      {
+          error = resultsr.getResult() - aimPos; // how far off from aimPos we are
+      }
+      else   
+      {
+          error = aimPos - resultsl.getResult(); // how far off from aimPos we are
+      }
+      double delta = 0;
+      if ((right && resultsr.getNew()) || (!right && resultsl.getNew()))
+      {
+          delta = error - lastError; // the change between error and lastError
+          lastError = error;
+      }
+      steering = (error * dirPGain) + (delta * dirDGain);
+      double pOutput = error * dirPGain;
+      double dOutput = delta * dirDGain;
+      SmartDashboard.putNumber("pOutput", pOutput);
+      SmartDashboard.putNumber("dOutput", dOutput);
+      SmartDashboard.putNumber("Error", error);
+      leftPower = outSpeed - steering;
+      rightPower = steering + outSpeed;
+      steerPriority(leftPower, rightPower);
+  }
+
+  private void steerPriority(double left, double right)
+  {
+      if (left - right > 2)
+      {
+          left = 1;
+          right = -1;
+      }
+      else if (right - left > 2)
+      {
+          left = -1;
+          right = 1;
+      }
+      else if (Math.max(right, left) > 1)
+      {
+          left = left - (Math.max(right,left) - 1);
+          right = right - (Math.max(right,left) - 1);
+      }
+      else if (Math.min(right, left) < -1)
+      {
+          left = left - (Math.min(right,left) + 1);
+          right = right - (Math.min(right,left) + 1);
+      }
+      SmartDashboard.putNumber("leftPower", left);
+      SmartDashboard.putNumber("rightPower", left);
+      SmartDashboard.putNumber("SteerLeft", left-right);
+      leftDrive.set(-left);
+      rightDrive.set(right);
+  }
+
   /** This function is called once when the robot is disabled. */
   @Override
   public void disabledInit() {
@@ -285,6 +434,7 @@ public class Robot extends TimedRobot {
   /** This function is called periodically when disabled. */
   @Override
   public void disabledPeriodic() {
+    updatePeriodic();
   }
 
   /** This function is called once when test mode is enabled. */
@@ -295,16 +445,17 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during test mode. */
   @Override
   public void testPeriodic() {
+    updatePeriodic();
   }
 
-  void deadZoneCorrection() {
-    if (steering > -kJoystickDeadband && steering < kJoystickDeadband) {
-      steering = 0;
-    }
-    if (power > -kJoystickDeadband && power < kJoystickDeadband) {
-      power = 0;
-    }
-  }
+  // void deadZoneCorrection() {
+  //   if (steering > -kJoystickDeadband && steering < kJoystickDeadband) {
+  //     steering = 0;
+  //   }
+  //   if (power > -kJoystickDeadband && power < kJoystickDeadband) {
+  //     power = 0;
+  //   }
+  // }
 
   void armLow() {
     if((!lowSwitch.get())) {
