@@ -26,6 +26,7 @@ public class Robot extends TimedRobot {
   private static final String kCustomAuto = "My Auto";
   private String m_autoSelected;
   private final SendableChooser<String> m_chooser = new SendableChooser<>();
+  public final static double kJoystickDeadband = 0.2;
 
   DigitalInput lowSwitch = new DigitalInput(0);
   DigitalInput portSwitch = new DigitalInput(1);
@@ -136,51 +137,21 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {
-    // for (int ii = 0 ; ii < 20 ; ii++)
-    // {
-    //   if (pad.getRawButton(ii))
-    //   {
-    //     System.out.print("t,");
-    //   }
-    //   else
-    //   {
-    //     System.out.print("f,");
-    //   }
-    // }
-    // System.out.println();
-
-      // System.out.println("POV = " + pad.getPOV());
-
-    //System.out.println("Lower switch " + !lowSwitch.get());
-    //System.out.println("Middle switch " + !portSwitch.get());
-    //System.out.println("Upper switch " + !highSwitch.get());
 
     steering = -stick.getX();
     power = stick.getY();
     throttle = (((stick.getThrottle() * -1) + 1) / 2);
-    //armStateMachine();
     deadZoneCorrection();
 
     leftDrive.set(-(steering + power) * throttle);
     rightDrive.set(-(steering - power) * throttle);
 
     boolean padMove = false;
-    // if (Math.abs(pad.getRawAxis(5)) > 0.2)
-    // {
-    //   padMove = true;
-    // }
-    // if (Math.abs(pad.getRawAxis(6)) > 0.2)
-    // {
-    //   padMove = true;
-    // }
-      if (pad.getPOV() >= 0)
-      {
-        padMove = true;
-      }
+    if (pad.getPOV() >= 0)
+    {
+      padMove = true;
+    }
 
-    // System.out.println("Button - " + padMove);
-    // System.out.println("Axis 0 - " + pad.getRawAxis(0));
-    // System.out.println("Axis 1 - " + pad.getRawAxis(1));
     if (( stick.getRawButton(11) || pad.getRawButton(2) )) {
       armPos = ArmPos.LOW;
       armLow();
@@ -294,9 +265,10 @@ public class Robot extends TimedRobot {
   }
 
   void deadZoneCorrection() {
-    if (steering > -0.5 && steering < 0.5) {
+    if (steering > -kJoystickDeadband && steering < kJoystickDeadband) {
       steering = 0;
-    } else if (power > -0.5 && power < 0.5) {
+    }
+    if (power > -kJoystickDeadband && power < kJoystickDeadband) {
       power = 0;
     }
   }
@@ -323,22 +295,6 @@ public class Robot extends TimedRobot {
       arm.set(-1);
     } else {
       armIdle();
-    }
-  }
-
-  void armStateMachine() {
-    switch(desiredArmPos) {
-      case LOW:
-        armLow();
-      break;
-      case MEDIUM:
-        armPort();
-      break;
-      case HIGH:
-        armHigh();
-      break;
-      default:
-      break;
     }
   }
 
