@@ -199,7 +199,7 @@ public class ColourSensor
             }
             //update count rotations
             if ((CurrentColour != PreviousColour) &&
-                (scanCount >= 3))
+                (scanCount >= 6))
             {
                 myColourChanges ++;
                 //update direction

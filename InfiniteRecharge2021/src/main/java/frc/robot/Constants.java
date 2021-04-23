@@ -24,8 +24,8 @@ public class Constants {
     public static final Value kControlPanelRetractedState = Value.kReverse;
 
 	public static final double kControlPanelManualSpeed = 0.3; 
-	public static final double kRotationalControlSpeed = 0.3;
-	public static final double kControlPanelPoisitionControlSpeed = 0.1;
+	public static final double kRotationalControlSpeed = 1.0;
+	public static final double kControlPanelPoisitionControlSpeed = 0.5;
 
 	public static final double kControlPanelTargetRotations = 4;
 	public static final double kControlPanelHysteresis = 0.5;

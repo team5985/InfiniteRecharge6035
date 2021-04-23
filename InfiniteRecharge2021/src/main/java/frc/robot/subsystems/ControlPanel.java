@@ -3,6 +3,7 @@ package frc.robot.subsystems;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.Solenoid;
 import edu.wpi.first.wpilibj.VictorSP;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants;
 import frc.util.ColourSensor;
 
@@ -73,20 +74,14 @@ public class ControlPanel
             double controlPanelRotations = ColourSensor.getInstance().getControlPanelRotations();
             if(controlPanelRotations < Constants.kRotationalControlTargetRotations)
             {   
-                if(Constants.kRotationalControlTargetRotations - controlPanelRotations < 2)
-                {
-                    setSpinnerSpeed(Constants.kControlPanelPoisitionControlSpeed);
-                }
-                else
-                {
-                    setSpinnerSpeed(Constants.kRotationalControlSpeed);
-                }
+                setSpinnerSpeed(Constants.kRotationalControlSpeed);
             }
             else
             {
                 setSpinnerSpeed(0);
                 // Do not auto retract the spinny on the 6035 robot or else you will hit the colour sensor on the way down!
                 //setDesiredState(ControlPanelState.RETRACTED);
+                setDesiredState(ControlPanelState.EXTENDED);
             }   
             break;
 
@@ -148,6 +143,8 @@ public class ControlPanel
             desiredState = ControlPanelState.RETRACTED;
             break;
         }
+        SmartDashboard.putNumber("Rotations", ColourSensor.getInstance().getControlPanelRotations());
+        SmartDashboard.putString("Colour", ColourSensor.getInstance().getColourString());
     }
 
     /**
@@ -158,6 +155,19 @@ public class ControlPanel
     public void setDesiredState(ControlPanelState newState)
     {
         desiredState = newState;
+    }
+
+    public boolean getRotating()
+    {
+        if (desiredState == ControlPanelState.POSITION_CONTROL)
+        {
+            return true;
+        }
+        if (desiredState == ControlPanelState.ROTATION_CONTROL)
+        {
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -172,7 +182,7 @@ public class ControlPanel
 
     public boolean getExtended()
     {
-        if(currentState == ControlPanelState.EXTENDED)
+        if(desiredState == ControlPanelState.EXTENDED)
         {
             return true;
         }

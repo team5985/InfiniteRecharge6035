@@ -67,8 +67,8 @@ public class Robot extends TimedRobot {
     SmartDashboard.putData("Auto choices", m_chooser);
     
     I2C.Port i2cp = I2C.Port.kOnboard;
-    I2C usLinkl = new I2C(i2cp, 0x13);
-    I2C usLinkr = new I2C(i2cp, 0x14);
+    I2C usLinkl = new I2C(i2cp, 0x14);
+    I2C usLinkr = new I2C(i2cp, 0x13);
     usi2cl = new UltrasonicI2C(usLinkl);
     usi2cr = new UltrasonicI2C(usLinkr);
   }
@@ -209,8 +209,11 @@ public class Robot extends TimedRobot {
         if (power > -kJoystickDeadband && power < kJoystickDeadband) {
           power = 0;
         }
-
-        steerPriority(power - steering, steering + power);
+        if (cPanel.getRotating() && (power == 0))
+        {
+            power = -0.1;
+        }
+        steerPriority(power + steering, power - steering);
     }
 
     // steering = -stick.getX();
@@ -287,7 +290,7 @@ public class Robot extends TimedRobot {
     } else {
       armIdle();
     }
-    System.out.println(armPos);
+    // System.out.println(armPos);
 
     if (stick.getRawButton(12) && !lastSpinnyButton)
     {
@@ -306,7 +309,7 @@ public class Robot extends TimedRobot {
     {
       if (stick.getRawButton(1))
       {
-        cPanel.setDesiredState(ControlPanelState.MANUAL_CLOCKWISE);
+        cPanel.setDesiredState(ControlPanelState.ROTATION_CONTROL);
       }
       else
       {
@@ -356,6 +359,13 @@ public class Robot extends TimedRobot {
       double rightPower;
       double accRate = 0.08;
 
+      // Tuning for 6035 main robot.
+      speed = 1.0;
+      aimPos = 350;
+      pgain = 0.0005;
+      dgain = 0.02
+      ;
+
       double power = speed;
       if (reverse)
       {
@@ -392,8 +402,8 @@ public class Robot extends TimedRobot {
       SmartDashboard.putNumber("pOutput", pOutput);
       SmartDashboard.putNumber("dOutput", dOutput);
       SmartDashboard.putNumber("Error", error);
-      leftPower = outSpeed - steering;
-      rightPower = steering + outSpeed;
+      leftPower = outSpeed + steering;
+      rightPower = outSpeed - steering;
       steerPriority(leftPower, rightPower);
   }
 
@@ -422,8 +432,8 @@ public class Robot extends TimedRobot {
       SmartDashboard.putNumber("leftPower", left);
       SmartDashboard.putNumber("rightPower", left);
       SmartDashboard.putNumber("SteerLeft", left-right);
-      leftDrive.set(-left);
-      rightDrive.set(right);
+      leftDrive.set(left);
+      rightDrive.set(-right);
   }
 
   /** This function is called once when the robot is disabled. */
