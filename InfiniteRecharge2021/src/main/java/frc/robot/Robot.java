@@ -10,6 +10,7 @@ import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.I2C;
 import edu.wpi.first.wpilibj.Joystick;
+import edu.wpi.first.wpilibj.PowerDistributionPanel;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.VictorSP;
 import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
@@ -75,6 +76,7 @@ public class Robot extends TimedRobot {
 
   VictorSP leftDrive = new VictorSP(0); // two controllers off pwm splitter
   VictorSP rightDrive = new VictorSP(1);
+  int autoSeconds = 0;
 
   VictorSP arm = new VictorSP(7);
   VictorSP intake = new VictorSP(5);
@@ -95,7 +97,6 @@ public class Robot extends TimedRobot {
   public static final int ARM_POS_PORT = 2;
   public static final int ARM_POS_LOW = 3;
   int armCommand = ARM_POS_NONE;
-
   /**
    * This function is called every robot packet, no matter the mode. Use this for
    * items like diagnostics that you want ran during disabled, autonomous,
@@ -164,6 +165,16 @@ public class Robot extends TimedRobot {
       // Put default auto code here
       break;
     }
+   
+    
+    leftDrive.set(0.5);
+    rightDrive.set(-0.5);
+    autoSeconds++;
+    if(autoSeconds > 80){
+      leftDrive.set(0);
+      rightDrive.set(0);
+    }
+
   }
 
   /** This function is called once when teleop is enabled. */
@@ -174,6 +185,7 @@ public class Robot extends TimedRobot {
   }
 
   private boolean lastSpinnyButton = false;
+  private boolean lastSpinnyPadButton = false;
 
   /** This function is called periodically during operator control. */
   @Override
@@ -292,7 +304,7 @@ public class Robot extends TimedRobot {
     }
     // System.out.println(armPos);
 
-    if (stick.getRawButton(12) && !lastSpinnyButton)
+    if (pad.getRawButton(1) && !lastSpinnyPadButton)
     {
       if (cPanel.getExtended())
       {
@@ -303,13 +315,27 @@ public class Robot extends TimedRobot {
         cPanel.setDesiredState(ControlPanelState.EXTENDED);
       }
     }
-    lastSpinnyButton = stick.getRawButton(12);
+    lastSpinnyButton = stick.getRawButton(12); 
+    lastSpinnyPadButton = pad.getRawButton(1); 
+
 
     if(cPanel.getExtended() == true)
     {
       if (stick.getRawButton(1))
       {
         cPanel.setDesiredState(ControlPanelState.ROTATION_CONTROL);
+      }
+      else if(stick.getRawButton(2))
+      {
+        cPanel.setDesiredState((ControlPanelState.POSITION_CONTROL));
+
+      }
+      else if(stick.getRawButton(3)){
+        cPanel.setDesiredState((ControlPanelState.MANUAL_ANTICLOCKWISE));
+      }
+      else if(stick.getRawButton(4))
+      {
+        cPanel.setDesiredState((ControlPanelState.MANUAL_CLOCKWISE));
       }
       else
       {

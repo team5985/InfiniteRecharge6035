@@ -1,8 +1,11 @@
 package frc.robot.subsystems;
 
+import java.util.Random;
+
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.Solenoid;
 import edu.wpi.first.wpilibj.VictorSP;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants;
 import frc.util.ColourSensor;
@@ -23,7 +26,7 @@ public class ControlPanel
     private int SecondarySpinCheck;
     private VictorSP spinMotor;
     private DoubleSolenoid spinSolenoid;
-
+    private SendableChooser testColour;
     // Prohibit default constructor from being used.
     @SuppressWarnings("unused")
     private ControlPanel(){}
@@ -93,6 +96,7 @@ public class ControlPanel
                 SecondarySpinCheck = 0;
             }     
             if (ColourSensor.getInstance().getFmsColour() == Constants.kControlPanelColourInvalid)
+            //if(true==false) ONLY USE IF YOU ARE TESTING ____
             {
                 // Do not auto retract the spinny on the 6035 robot or else you will hit the colour sensor on the way down!
                 //setDesiredState(ControlPanelState.RETRACTED);
@@ -101,6 +105,9 @@ public class ControlPanel
             else
             {
                 int FMSColour = ColourSensor.getInstance().getFmsColour();
+
+               //FMSColour = 3; ONLY FOR TESTING
+
                 int currentColour = ColourSensor.getInstance().getColour();
                 // Calculate target colour - two offset from the colour the robot will see.
                 int TargetColour = (FMSColour +2) % 4;
@@ -111,7 +118,7 @@ public class ControlPanel
                 }
                 else
                 {
-                    if(SecondarySpinCheck >= 3)
+                    if(SecondarySpinCheck >= 8)
                     {
                        // Do not auto retract the spinny on the 6035 robot or else you will hit the colour sensor on the way down!
                         //setDesiredState(ControlPanelState.RETRACTED);
@@ -209,6 +216,7 @@ public class ControlPanel
     private void extendSpinner()
     {
         spinSolenoid.set(Constants.kControlPanelExtendedState);
+
     }
 
     /**
@@ -217,6 +225,7 @@ public class ControlPanel
     private void retractSpinner()
     {
         spinSolenoid.set(Constants.kControlPanelRetractedState);
+
     }
 
     /**
