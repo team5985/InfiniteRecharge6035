@@ -192,9 +192,10 @@ public class Robot extends TimedRobot {
       break;
     }
    
-    
+    if(autoSeconds<= 80){
     leftDrive.set(0.5);
     rightDrive.set(-0.5);
+    }
     autoSeconds++;
     if(autoSeconds > 80){
       leftDrive.set(0);
