@@ -30,12 +30,20 @@ public class ControlPanel
     // Prohibit default constructor from being used.
     @SuppressWarnings("unused")
     private ControlPanel(){}
+    private SendableChooser colChoose;
 
     public ControlPanel(VictorSP aSpinMotor, DoubleSolenoid aSpinSolenoid){
         spinMotor = aSpinMotor;
         spinSolenoid = aSpinSolenoid;
         desiredState = ControlPanelState.RETRACTED;
         SecondarySpinCheck = 0;
+        colChoose = new SendableChooser<Integer>();
+        colChoose.setDefaultOption("FMS Selected", Integer.valueOf(-1));
+        for (int ii = 0 ; ii < 4 ; ii++)
+        {
+            colChoose.addOption(ColourSensor.getInstance().getColourString(ii), Integer.valueOf(ii));
+        }
+        SmartDashboard.putData("Colour Sel", colChoose);
     }
 
     /**
@@ -51,6 +59,12 @@ public class ControlPanel
             newState = true;
             currentState = desiredState;
         }
+        int colsel = ((Integer)colChoose.getSelected()).intValue();
+        if (colsel == -1)
+        {
+            colsel = ColourSensor.getInstance().getFmsColour();
+        }
+        SmartDashboard.putString("Selected Colour", ColourSensor.getInstance().getColourString(colsel));
 
         //state machine
         switch(currentState) {
@@ -95,8 +109,7 @@ public class ControlPanel
             if(newState == true){
                 SecondarySpinCheck = 0;
             }     
-            if (ColourSensor.getInstance().getFmsColour() == Constants.kControlPanelColourInvalid)
-            //if(true==false) ONLY USE IF YOU ARE TESTING ____
+            if (colsel == Constants.kControlPanelColourInvalid)
             {
                 // Do not auto retract the spinny on the 6035 robot or else you will hit the colour sensor on the way down!
                 //setDesiredState(ControlPanelState.RETRACTED);
@@ -104,13 +117,9 @@ public class ControlPanel
             }
             else
             {
-                int FMSColour = ColourSensor.getInstance().getFmsColour();
-
-               //FMSColour = 3; ONLY FOR TESTING
-
                 int currentColour = ColourSensor.getInstance().getColour();
                 // Calculate target colour - two offset from the colour the robot will see.
-                int TargetColour = (FMSColour +2) % 4;
+                int TargetColour = (colsel +2) % 4;
                 if(currentColour != TargetColour)
                 {
                     setSpinnerSpeed(Constants.kControlPanelPoisitionControlSpeed);
