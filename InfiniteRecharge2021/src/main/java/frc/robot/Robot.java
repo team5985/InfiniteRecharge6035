@@ -184,7 +184,6 @@ public class Robot extends TimedRobot {
     intakeSolenoid.set(Value.kForward);
   }
 
-  private boolean lastSpinnyButton = false;
   private boolean lastSpinnyPadButton = false;
 
   /** This function is called periodically during operator control. */
@@ -315,7 +314,6 @@ public class Robot extends TimedRobot {
         cPanel.setDesiredState(ControlPanelState.EXTENDED);
       }
     }
-    lastSpinnyButton = stick.getRawButton(12); 
     lastSpinnyPadButton = pad.getRawButton(1); 
 
 
