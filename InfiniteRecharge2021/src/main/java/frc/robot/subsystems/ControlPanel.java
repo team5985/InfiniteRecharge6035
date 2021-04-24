@@ -183,6 +183,14 @@ public class ControlPanel
         {
             return true;
         }
+        if (desiredState == ControlPanelState.MANUAL_CLOCKWISE)
+        {
+            return true;
+        }
+        if (desiredState == ControlPanelState.MANUAL_ANTICLOCKWISE)
+        {
+            return true;
+        }
         return false;
     }
 
@@ -195,6 +203,10 @@ public class ControlPanel
     {
         return currentState;
     }
+    public ControlPanelState getState()
+    {
+        return desiredState;
+    }
 
     public boolean getExtended()
     {
@@ -202,7 +214,7 @@ public class ControlPanel
         {
             return true;
         }
-        return false;
+        return getRotating();
     }
 
     /**

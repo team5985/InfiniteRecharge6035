@@ -90,6 +90,8 @@ public class Robot extends TimedRobot {
   DoubleSolenoid intakeSolenoid = new DoubleSolenoid(2, 3);
   DoubleSolenoid spinnySolenoid = new DoubleSolenoid(0, 1);
 
+  PowerDistributionPanel PDP = new PowerDistributionPanel(1);
+
   ControlPanel cPanel;
 
   public static final int ARM_POS_NONE = 0;
@@ -114,6 +116,30 @@ public class Robot extends TimedRobot {
     UltrasonicI2C.usResults resultsl = usi2cl.getResults();
     double resl = resultsl.getResult();
     SmartDashboard.putNumber("Distance left", resl);
+    double current = PDP.getTotalCurrent();
+    double voltage = PDP.getVoltage();
+    SmartDashboard.putNumber("Current", current);
+    SmartDashboard.putNumber("Voltage", voltage);
+    int batteryState = 0;
+    if (current < 5)
+    {
+      if (voltage < 12.05)
+      {
+        batteryState = 2;
+        SmartDashboard.putString("Battery", "!!!ALARM!!!");
+      }
+      else if (voltage < 12.15)
+      {
+        batteryState = 1;
+        SmartDashboard.putString("Battery", "Warning");
+      }
+      else
+      {
+        batteryState = 0;
+        SmartDashboard.putString("Battery", "Healthy");
+      }
+    }
+
   }
 
   /**
@@ -319,25 +345,40 @@ public class Robot extends TimedRobot {
 
     if(cPanel.getExtended() == true)
     {
-      if (stick.getRawButton(1))
+      if ((cPanel.getState() == ControlPanelState.MANUAL_ANTICLOCKWISE) ||
+        (cPanel.getState() == ControlPanelState.EXTENDED))
       {
-        cPanel.setDesiredState(ControlPanelState.ROTATION_CONTROL);
+        if(stick.getRawButton(3))
+        {
+          cPanel.setDesiredState(ControlPanelState.MANUAL_ANTICLOCKWISE);
+        }
+        else
+        {
+          cPanel.setDesiredState(ControlPanelState.EXTENDED);
+        }
       }
-      else if(stick.getRawButton(2))
+      if ((cPanel.getState() == ControlPanelState.MANUAL_CLOCKWISE) ||
+        (cPanel.getState() == ControlPanelState.EXTENDED))
       {
-        cPanel.setDesiredState((ControlPanelState.POSITION_CONTROL));
-
+        if(stick.getRawButton(4))
+        {
+          cPanel.setDesiredState(ControlPanelState.MANUAL_CLOCKWISE);
+        }
+        else
+        {
+          cPanel.setDesiredState(ControlPanelState.EXTENDED);
+        }
       }
-      else if(stick.getRawButton(3)){
-        cPanel.setDesiredState((ControlPanelState.MANUAL_ANTICLOCKWISE));
-      }
-      else if(stick.getRawButton(4))
+      if (cPanel.getRotating() == false)
       {
-        cPanel.setDesiredState((ControlPanelState.MANUAL_CLOCKWISE));
-      }
-      else
-      {
-        cPanel.setDesiredState(ControlPanelState.EXTENDED);
+        if (stick.getRawButton(1))
+        {
+          cPanel.setDesiredState(ControlPanelState.ROTATION_CONTROL);
+        }
+        else if(stick.getRawButton(2))
+        {
+          cPanel.setDesiredState((ControlPanelState.POSITION_CONTROL));
+        }
       }
       intake.set(0);
       intakeSolenoid.set(Value.kForward);
